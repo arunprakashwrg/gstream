@@ -61,6 +61,7 @@ class DataController<T> with DisposableMixin {
   }
 
   void _onStreamListen(Map<String, dynamic> data) {
+    // TODO: Add data persistance
     _invokeListeners(_decoder(data), null, null);
   }
 
@@ -73,6 +74,10 @@ class DataController<T> with DisposableMixin {
   }
 
   void on(DataCallback<T> onEvent) {
+    if (_listeners.contains(onEvent)) {
+      return;
+    }
+
     _listeners.add(onEvent);
   }
 
