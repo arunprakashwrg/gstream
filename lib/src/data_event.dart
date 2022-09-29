@@ -20,7 +20,8 @@ class DataEvent<T> {
   final Object? error;
   final StackTrace? stackTrace;
 
-  bool get isError => data == null && error != null;
+  bool get hasError => data == null && error != null;
+  bool get hasData => data != null;
 
   Type get _typeKey => typeOf<T>();
 

@@ -1,6 +1,4 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
+/// A Stream Builder Wrapper which aims to deliver a simple, yet powerful context based reactive UI building API.
 library gstream;
 
 export 'src/gstore.dart';
