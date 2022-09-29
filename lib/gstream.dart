@@ -4,6 +4,6 @@
 library gstream;
 
 export 'src/gstore.dart';
-export 'src/gstream_builder.dart';
+export 'src/widgets/gstream_builder.dart';
 
 // TODO: Export any libraries intended for clients of this package.

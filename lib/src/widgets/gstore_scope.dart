@@ -1,4 +1,4 @@
-part of 'gstore.dart';
+part of '../gstore.dart';
 
 class GStoreScope extends InheritedWidget {
   GStoreScope({

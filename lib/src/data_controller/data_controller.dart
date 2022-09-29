@@ -7,6 +7,7 @@ class DataController<T> with DisposableMixin {
     this._tag,
   );
 
+  /// Gets the nearest [DataController] of the specified type and key to the current context.
   static DataController<T> of<T>(BuildContext context, [String? tag]) {
     return context
         .dependOnInheritedWidgetOfExactType<GStoreScope>()!
@@ -23,6 +24,7 @@ class DataController<T> with DisposableMixin {
   final _listeners = <DataCallback<T>>[];
 
   bool get isDisposed => _controller == null || _controller!.isClosed;
+  bool get hasListeners => _listeners.isNotEmpty;
 
   void _initialze() {
     _controller = StreamController.broadcast();
@@ -31,13 +33,6 @@ class DataController<T> with DisposableMixin {
       _onStreamListen,
       onError: _onStreamError,
     );
-  }
-
-  @override
-  void dispose() {
-    _controller?.close();
-    _controller = null;
-    _listeners.clear();
   }
 
   void _onStreamError(Object error, StackTrace? stackTrace) {
@@ -106,5 +101,12 @@ class DataController<T> with DisposableMixin {
   void reset() {
     dispose();
     _initialze();
+  }
+
+  @override
+  void dispose() {
+    _controller?.close();
+    _controller = null;
+    _listeners.clear();
   }
 }

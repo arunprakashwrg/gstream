@@ -3,15 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gstream/src/data_controller/controller_key.dart';
 import 'package:gstream/src/data_event.dart';
-import 'package:gstream/src/disposable_mixin.dart';
-import 'package:gstream/src/typedefs.dart';
+import 'package:gstream/src/mixins/disposable_mixin.dart';
+import 'package:gstream/src/utilities/typedefs.dart';
 
 part 'data_controller/data_controller.dart';
-part 'gstore_scope.dart';
+part 'widgets/gstore_scope.dart';
 
 class GStore {
   GStore._();
 
+  /// Gets the associated [GStore] store which is nearest to the current context.
   factory GStore.of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<GStoreScope>()!.store;
   }

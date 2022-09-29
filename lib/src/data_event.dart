@@ -1,4 +1,4 @@
-import 'package:gstream/src/helpers.dart';
+import 'package:gstream/src/utilities/helpers.dart';
 
 class DataEvent<T> {
   const DataEvent.success({
@@ -28,6 +28,10 @@ class DataEvent<T> {
   bool operator ==(Object other) {
     if (other is! DataEvent<T>) {
       return false;
+    }
+
+    if (identical(other, this)) {
+      return true;
     }
 
     return other.hashCode == this.hashCode;

@@ -1,5 +1,7 @@
-import 'package:gstream/src/helpers.dart';
+import 'package:flutter/material.dart';
+import 'package:gstream/src/utilities/helpers.dart';
 
+@immutable
 class ControllerKey<T> {
   const ControllerKey([this.tag]);
 
