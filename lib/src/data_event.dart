@@ -27,15 +27,11 @@ class DataEvent<T> {
 
   @override
   bool operator ==(Object other) {
-    if (other is! DataEvent<T>) {
+    if (other is! DataEvent) {
       return false;
     }
 
-    if (identical(other, this)) {
-      return true;
-    }
-
-    return other.hashCode == this.hashCode;
+    return identical(other, this) || other.data == this.data;
   }
 
   @override
