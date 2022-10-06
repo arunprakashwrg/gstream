@@ -25,14 +25,40 @@ class DataController<T> with DisposableMixin {
 
   bool get isDisposed => _controller == null || _controller!.isClosed;
   bool get hasListeners => _listeners.isNotEmpty;
+  bool get hasInitialized => !isDisposed;
 
   void _initialze() {
+    if (hasInitialized) {
+      throw ControllerReinitializingException<T>();
+    }
+
     _controller = StreamController.broadcast();
 
     _controller!.stream.listen(
       _onStreamListen,
       onError: _onStreamError,
     );
+  }
+
+  void _invokeListeners(
+    T? data,
+    Object? error,
+    StackTrace? stackTrace,
+  ) {
+    final event = $(() {
+      if (data == null) {
+        return DataEvent<T>.error(
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+
+      return DataEvent<T>.success(data: data);
+    });
+
+    for (final callback in _listeners) {
+      callback(event);
+    }
   }
 
   void _onStreamError(Object error, StackTrace? stackTrace) {
@@ -43,30 +69,18 @@ class DataController<T> with DisposableMixin {
     );
   }
 
-  void _invokeListeners(
-    T? data,
-    Object? error,
-    StackTrace? stackTrace,
-  ) {
-    final event = data != null
-        ? DataEvent<T>.success(data: data)
-        : DataEvent<T>.error(
-            error: error,
-            stackTrace: stackTrace,
-          );
-
-    for (final callback in _listeners) {
-      callback(event);
-    }
-  }
-
   void _onStreamListen(Map<String, dynamic> data) {
     // TODO: Add data persistance
-    _invokeListeners(_decoder(data), null, null);
+    _invokeListeners(
+      _decoder(data),
+      null,
+      null,
+    );
   }
 
-  void update(T data) {
-    if (isDisposed) {
+  // TODO: How do we handle a situtation where we don't have any listeners and we have to add a data to the stream?
+  void insert(T data) {
+    if (!hasInitialized || !hasListeners) {
       return;
     }
 
@@ -79,9 +93,17 @@ class DataController<T> with DisposableMixin {
     }
 
     _listeners.add(onEvent);
+
+    if (!hasInitialized) {
+      _initialze();
+    }
   }
 
   Stream<DataEvent<T>> watch() {
+    if (!hasInitialized) {
+      throw ControllerNotInitializedException<T>();
+    }
+
     return _controller!.stream.transform(
       StreamTransformer.fromHandlers(
         handleData: (data, sink) {
@@ -101,11 +123,6 @@ class DataController<T> with DisposableMixin {
         },
       ),
     );
-  }
-
-  void reset() {
-    dispose();
-    _initialze();
   }
 
   @override

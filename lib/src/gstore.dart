@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:gstream/src/data_controller/controller_key.dart';
 import 'package:gstream/src/data_event.dart';
 import 'package:gstream/src/mixins/disposable_mixin.dart';
+import 'package:gstream/src/utilities/helpers.dart';
 import 'package:gstream/src/utilities/typedefs.dart';
+
+import 'exceptions/controller_not_initialized_exception.dart';
+import 'exceptions/controller_reinitialize_exception.dart';
 
 part 'data_controller/data_controller.dart';
 part 'widgets/gstore_scope.dart';
