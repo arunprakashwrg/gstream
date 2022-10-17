@@ -56,10 +56,10 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
           _dataController ??= DataController.of<T>(context, widget.tag);
         }
 
-        controller.on(
+        _store.listen<T>(
           (currentEvent) {
             if (currentEvent == _previousEvent || !mounted) {
-              // dont rebuild if both states are equal
+              // dont rebuild if both states are equal or state is no longer mounted
               return;
             }
 
@@ -82,6 +82,7 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
               _previousEvent = currentEvent;
             });
           },
+          widget.tag,
         );
       },
     );
@@ -100,11 +101,13 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
       case ControllerDisposeMode.auto:
       default:
-        if (!controller.hasListeners) {
-          controller.dispose();
-          _store.remove<T>(widget.tag);
-          widget.onDispose?.call();
+        if (controller.hasListeners) {
+          break;
         }
+
+        controller.dispose();
+        _store.remove<T>(widget.tag);
+        widget.onDispose?.call();
         break;
     }
   }

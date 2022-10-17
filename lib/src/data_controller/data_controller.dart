@@ -5,7 +5,7 @@ class DataController<T> with DisposableMixin {
     this._decoder,
     this._encoder,
     this._tag,
-  );
+  ) : _dataHistory = [];
 
   /// Gets the nearest [DataController] of the specified type and key to the current context.
   static DataController<T> of<T>(BuildContext context, [String? tag]) {
@@ -16,35 +16,45 @@ class DataController<T> with DisposableMixin {
   }
 
   final T Function(dynamic json) _decoder;
-  final String? _tag;
   final Map<String, dynamic> Function(T instance) _encoder;
-  StreamController<Map<String, dynamic>>? _controller;
-
-  ControllerKey<T> get _key => ControllerKey<T>(_tag);
+  final List<Map<String, dynamic>> _dataHistory;
+  final String? _tag;
   final _listeners = <DataCallback<T>>[];
 
-  bool get isDisposed => _controller == null || _controller!.isClosed;
   bool get hasListeners => _listeners.isNotEmpty;
-  bool get hasInitialized => !isDisposed;
+  ControllerKey<T> get _key => ControllerKey<T>(_tag);
+  T get _currentData => _decoder(_dataHistory.last);
 
-  void _initialze() {
-    if (hasInitialized) {
-      throw ControllerReinitializingException<T>();
-    }
+  bool _pause = false;
+  bool _replayHistoryOnAdd = false;
+  DateTime _lastEmittedTime = DateTime.now();
+  Duration? _interval;
+  Duration? _throttle;
 
-    _controller = StreamController.broadcast();
+  bool get throttled => _throttle != null;
+  bool get intervelled => _interval != null;
 
-    _controller!.stream.listen(
-      _onStreamListen,
-      onError: _onStreamError,
-    );
-  }
+  void withReplay(bool value) => _replayHistoryOnAdd = value;
 
-  void _invokeListeners(
+  void pauseEvents() => _pause = true;
+
+  void resumeEvents() => _pause = false;
+
+  void notifyListeners() => _invokeListeners(data: _currentData);
+
+  void interval(Duration? duration) => _interval = duration;
+
+  void throttle(Duration? duration) => _throttle = duration;
+
+  void _invokeListeners({
     T? data,
     Object? error,
     StackTrace? stackTrace,
-  ) {
+  }) {
+    if (!hasListeners) {
+      return;
+    }
+
     final event = $(() {
       if (data == null) {
         return DataEvent<T>.error(
@@ -56,79 +66,98 @@ class DataController<T> with DisposableMixin {
       return DataEvent<T>.success(data: data);
     });
 
-    for (final callback in _listeners) {
-      callback(event);
-    }
-  }
+    Future.wait(
+      _listeners.map((callback) async {
+        final lastEventTime = DateTime.now().difference(_lastEmittedTime);
 
-  void _onStreamError(Object error, StackTrace? stackTrace) {
-    _invokeListeners(
-      null,
-      error,
-      stackTrace,
+        if (_throttle != null && lastEventTime < _throttle!) {
+          return;
+        }
+
+        if (_interval != null) {
+          if (lastEventTime < _interval!) {
+            Future.delayed(lastEventTime, () {
+              callback(event);
+              _lastEmittedTime = DateTime.now();
+            });
+
+            return;
+          }
+        }
+
+        callback(event);
+        _lastEmittedTime = DateTime.now();
+      }),
     );
   }
 
-  void _onStreamListen(Map<String, dynamic> data) {
-    // TODO: Add data persistance
-    _invokeListeners(
-      _decoder(data),
-      null,
-      null,
-    );
-  }
-
-  // TODO: How do we handle a situtation where we don't have any listeners and we have to add a data to the stream?
-  void insert(T data) {
-    if (!hasInitialized || !hasListeners) {
+  void insertAsync(Future<T> Function() dataGenerator) {
+    if (!hasListeners) {
       return;
     }
 
-    _controller!.add(_encoder(data));
+    dataGenerator().then(
+      (value) {
+        insert(value);
+      },
+      onError: (error, stackTrace) {
+        insertError(
+          error,
+          stackTrace ?? StackTrace.current,
+        );
+      },
+    );
   }
 
-  void on(DataCallback<T> onEvent) {
+  void insertError(
+    Object error, [
+    StackTrace? stackTrace,
+  ]) {
+    if (!hasListeners) {
+      return;
+    }
+
+    _invokeListeners(
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  void insert(T data) {
+    if (!hasListeners || _pause) {
+      return;
+    }
+
+    _dataHistory.add(_encoder(data));
+
+    _invokeListeners(
+      data: data,
+    );
+  }
+
+  void _on(DataCallback<T> onEvent) {
     if (_listeners.contains(onEvent)) {
       return;
     }
 
     _listeners.add(onEvent);
 
-    if (!hasInitialized) {
-      _initialze();
-    }
-  }
+    if (_dataHistory.isNotEmpty) {
+      if (_replayHistoryOnAdd) {
+        _dataHistory.forEach(
+          (element) => _invokeListeners(data: _decoder(element)),
+        );
 
-  Stream<DataEvent<T>> watch() {
-    if (!hasInitialized) {
-      throw ControllerNotInitializedException<T>();
-    }
+        return;
+      }
 
-    return _controller!.stream.transform(
-      StreamTransformer.fromHandlers(
-        handleData: (data, sink) {
-          sink.add(
-            DataEvent.success(
-              data: _decoder(data),
-            ),
-          );
-        },
-        handleError: (error, stackTrace, sink) {
-          sink.add(
-            DataEvent.error(
-              error: error,
-              stackTrace: stackTrace,
-            ),
-          );
-        },
-      ),
-    );
+      _invokeListeners(data: _decoder(_dataHistory.last));
+    }
   }
 
   @override
   void dispose() {
-    _controller?.close();
-    _controller = null;
+    _dataHistory.clear();
     _listeners.clear();
   }
 }
