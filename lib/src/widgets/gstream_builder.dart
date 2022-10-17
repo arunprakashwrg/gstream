@@ -101,11 +101,13 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
       case ControllerDisposeMode.auto:
       default:
-        if (!controller.hasListeners) {
-          controller.dispose();
-          _store.remove<T>(widget.tag);
-          widget.onDispose?.call();
+        if (controller.hasListeners) {
+          break;
         }
+
+        controller.dispose();
+        _store.remove<T>(widget.tag);
+        widget.onDispose?.call();
         break;
     }
   }

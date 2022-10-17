@@ -5,7 +5,7 @@ class DataController<T> with DisposableMixin {
     this._decoder,
     this._encoder,
     this._tag,
-  ) : _dataIterable = [];
+  ) : _dataHistory = [];
 
   /// Gets the nearest [DataController] of the specified type and key to the current context.
   static DataController<T> of<T>(BuildContext context, [String? tag]) {
@@ -17,13 +17,34 @@ class DataController<T> with DisposableMixin {
 
   final T Function(dynamic json) _decoder;
   final Map<String, dynamic> Function(T instance) _encoder;
-  final List<Map<String, dynamic>> _dataIterable;
+  final List<Map<String, dynamic>> _dataHistory;
   final String? _tag;
-
-  ControllerKey<T> get _key => ControllerKey<T>(_tag);
   final _listeners = <DataCallback<T>>[];
 
   bool get hasListeners => _listeners.isNotEmpty;
+  ControllerKey<T> get _key => ControllerKey<T>(_tag);
+  T get _currentData => _decoder(_dataHistory.last);
+
+  bool _pause = false;
+  bool _replayHistoryOnAdd = false;
+  DateTime _lastEmittedTime = DateTime.now();
+  Duration? _interval;
+  Duration? _throttle;
+
+  bool get throttled => _throttle != null;
+  bool get intervelled => _interval != null;
+
+  void withReplay(bool value) => _replayHistoryOnAdd = value;
+
+  void pauseEvents() => _pause = true;
+
+  void resumeEvents() => _pause = false;
+
+  void notifyListeners() => _invokeListeners(data: _currentData);
+
+  void interval(Duration? duration) => _interval = duration;
+
+  void throttle(Duration? duration) => _throttle = duration;
 
   void _invokeListeners({
     T? data,
@@ -45,9 +66,29 @@ class DataController<T> with DisposableMixin {
       return DataEvent<T>.success(data: data);
     });
 
-    for (final callback in _listeners) {
-      callback(event);
-    }
+    Future.wait(
+      _listeners.map((callback) async {
+        final lastEventTime = DateTime.now().difference(_lastEmittedTime);
+
+        if (_throttle != null && lastEventTime < _throttle!) {
+          return;
+        }
+
+        if (_interval != null) {
+          if (lastEventTime < _interval!) {
+            Future.delayed(lastEventTime, () {
+              callback(event);
+              _lastEmittedTime = DateTime.now();
+            });
+
+            return;
+          }
+        }
+
+        callback(event);
+        _lastEmittedTime = DateTime.now();
+      }),
+    );
   }
 
   void insertAsync(Future<T> Function() dataGenerator) {
@@ -83,16 +124,14 @@ class DataController<T> with DisposableMixin {
   }
 
   void insert(T data) {
-    if (!hasListeners) {
+    if (!hasListeners || _pause) {
       return;
     }
 
-    final encodedData = _encoder(data);
-
-    _dataIterable.add(encodedData);
+    _dataHistory.add(_encoder(data));
 
     _invokeListeners(
-      data: _decoder(data),
+      data: data,
     );
   }
 
@@ -102,11 +141,23 @@ class DataController<T> with DisposableMixin {
     }
 
     _listeners.add(onEvent);
+
+    if (_dataHistory.isNotEmpty) {
+      if (_replayHistoryOnAdd) {
+        _dataHistory.forEach(
+          (element) => _invokeListeners(data: _decoder(element)),
+        );
+
+        return;
+      }
+
+      _invokeListeners(data: _decoder(_dataHistory.last));
+    }
   }
 
   @override
   void dispose() {
-    _dataIterable.clear();
+    _dataHistory.clear();
     _listeners.clear();
   }
 }

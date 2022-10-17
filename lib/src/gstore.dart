@@ -26,6 +26,7 @@ class GStore {
     required Map<String, dynamic> Function(T instance) encoder,
     required T Function(dynamic json) decoder,
     String? tag,
+    void Function(DataController<T> controller)? onCreate,
   }) {
     if (contains<T>(tag)) {
       return;
@@ -38,6 +39,7 @@ class GStore {
     );
 
     _dataControllers[controller._key] = controller;
+    onCreate?.call(controller);
   }
 
   DataController<T> get<T>([String? tag]) {
