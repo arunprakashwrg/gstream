@@ -5,7 +5,7 @@ class DataController<T> with DisposableMixin {
     this._decoder,
     this._encoder,
     this._tag,
-  );
+  ) : _dataIterable = [];
 
   /// Gets the nearest [DataController] of the specified type and key to the current context.
   static DataController<T> of<T>(BuildContext context, [String? tag]) {
@@ -16,35 +16,24 @@ class DataController<T> with DisposableMixin {
   }
 
   final T Function(dynamic json) _decoder;
-  final String? _tag;
   final Map<String, dynamic> Function(T instance) _encoder;
-  StreamController<Map<String, dynamic>>? _controller;
+  final List<Map<String, dynamic>> _dataIterable;
+  final String? _tag;
 
   ControllerKey<T> get _key => ControllerKey<T>(_tag);
   final _listeners = <DataCallback<T>>[];
 
-  bool get isDisposed => _controller == null || _controller!.isClosed;
   bool get hasListeners => _listeners.isNotEmpty;
-  bool get hasInitialized => !isDisposed;
 
-  void _initialze() {
-    if (hasInitialized) {
-      throw ControllerReinitializingException<T>();
-    }
-
-    _controller = StreamController.broadcast();
-
-    _controller!.stream.listen(
-      _onStreamListen,
-      onError: _onStreamError,
-    );
-  }
-
-  void _invokeListeners(
+  void _invokeListeners({
     T? data,
     Object? error,
     StackTrace? stackTrace,
-  ) {
+  }) {
+    if (!hasListeners) {
+      return;
+    }
+
     final event = $(() {
       if (data == null) {
         return DataEvent<T>.error(
@@ -61,74 +50,63 @@ class DataController<T> with DisposableMixin {
     }
   }
 
-  void _onStreamError(Object error, StackTrace? stackTrace) {
-    _invokeListeners(
-      null,
-      error,
-      stackTrace,
-    );
-  }
-
-  void _onStreamListen(Map<String, dynamic> data) {
-    // TODO: Add data persistance
-    _invokeListeners(
-      _decoder(data),
-      null,
-      null,
-    );
-  }
-
-  // TODO: How do we handle a situtation where we don't have any listeners and we have to add a data to the stream?
-  void insert(T data) {
-    if (!hasInitialized || !hasListeners) {
+  void insertAsync(Future<T> Function() dataGenerator) {
+    if (!hasListeners) {
       return;
     }
 
-    _controller!.add(_encoder(data));
+    dataGenerator().then(
+      (value) {
+        insert(value);
+      },
+      onError: (error, stackTrace) {
+        insertError(
+          error,
+          stackTrace ?? StackTrace.current,
+        );
+      },
+    );
   }
 
-  void on(DataCallback<T> onEvent) {
+  void insertError(
+    Object error, [
+    StackTrace? stackTrace,
+  ]) {
+    if (!hasListeners) {
+      return;
+    }
+
+    _invokeListeners(
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  void insert(T data) {
+    if (!hasListeners) {
+      return;
+    }
+
+    final encodedData = _encoder(data);
+
+    _dataIterable.add(encodedData);
+
+    _invokeListeners(
+      data: _decoder(data),
+    );
+  }
+
+  void _on(DataCallback<T> onEvent) {
     if (_listeners.contains(onEvent)) {
       return;
     }
 
     _listeners.add(onEvent);
-
-    if (!hasInitialized) {
-      _initialze();
-    }
-  }
-
-  Stream<DataEvent<T>> watch() {
-    if (!hasInitialized) {
-      throw ControllerNotInitializedException<T>();
-    }
-
-    return _controller!.stream.transform(
-      StreamTransformer.fromHandlers(
-        handleData: (data, sink) {
-          sink.add(
-            DataEvent.success(
-              data: _decoder(data),
-            ),
-          );
-        },
-        handleError: (error, stackTrace, sink) {
-          sink.add(
-            DataEvent.error(
-              error: error,
-              stackTrace: stackTrace,
-            ),
-          );
-        },
-      ),
-    );
   }
 
   @override
   void dispose() {
-    _controller?.close();
-    _controller = null;
+    _dataIterable.clear();
     _listeners.clear();
   }
 }

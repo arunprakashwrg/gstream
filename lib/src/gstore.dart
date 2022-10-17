@@ -7,17 +7,14 @@ import 'package:gstream/src/mixins/disposable_mixin.dart';
 import 'package:gstream/src/utilities/helpers.dart';
 import 'package:gstream/src/utilities/typedefs.dart';
 
-import 'exceptions/controller_not_initialized_exception.dart';
-import 'exceptions/controller_reinitialize_exception.dart';
-
 part 'data_controller/data_controller.dart';
 part 'widgets/gstore_scope.dart';
 
 class GStore {
   GStore._();
 
-  /// Gets the associated [GStore] store which is nearest to the current context.
-  factory GStore.of(BuildContext context) {
+  /// Gets the associated [GStore] instance which is nearest to the current context.
+  static GStore of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<GStoreScope>()!.store;
   }
 
@@ -40,7 +37,6 @@ class GStore {
       tag,
     );
 
-    controller._initialze();
     _dataControllers[controller._key] = controller;
   }
 
@@ -52,8 +48,12 @@ class GStore {
     return _dataControllers[ControllerKey<T>(tag)] as DataController<T>;
   }
 
-  Stream<DataEvent<T>> watch<T>([String? tag]) {
-    return get<T>(tag).watch();
+  void listen<T>(
+    DataCallback<T> onEvent, [
+    String? tag,
+  ]) {
+    final controller = get<T>(tag);
+    controller._on(onEvent);
   }
 
   bool contains<T>([String? tag]) {
