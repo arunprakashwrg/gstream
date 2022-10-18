@@ -38,7 +38,9 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
   }
 
   DataController<T>? _dataController;
-  DataEvent<T> _previousEvent = DataEvent<T>.initial();
+  DataEvent<T> _event = DataEvent<T>.initial();
+  DataEvent<T> _prevEvent = DataEvent<T>.initial();
+  Widget? _cachedChild;
 
   DataController<T> get controller => _dataController!;
 
@@ -56,22 +58,30 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
           _dataController ??= DataController.of<T>(context, widget.tag);
         }
 
+        if (_event != _dataController!.lastEvent) {
+          setState(() {
+            _event = _dataController!.lastEvent;
+            _prevEvent = _event;
+          });
+        }
+
         _store.listen<T>(
-          (currentEvent) {
-            if (currentEvent == _previousEvent || !mounted) {
+          (newEvent) {
+            if (newEvent == _event || !mounted) {
               // dont rebuild if both states are equal or state is no longer mounted
               return;
             }
 
             if (widget.shouldRebuildCallback != null) {
               final shouldRebuild = widget.shouldRebuildCallback!(
-                _previousEvent,
-                currentEvent,
+                _event,
+                newEvent,
               );
 
               if (shouldRebuild) {
                 setState(() {
-                  _previousEvent = currentEvent;
+                  _prevEvent = _event;
+                  _event = newEvent;
                 });
 
                 return;
@@ -79,7 +89,8 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
             }
 
             setState(() {
-              _previousEvent = currentEvent;
+              _prevEvent = _event;
+              _event = newEvent;
             });
           },
           widget.tag,
@@ -114,9 +125,13 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder(
+    if (_cachedChild != null && _event == _prevEvent) {
+      return _cachedChild!;
+    }
+
+    return _cachedChild = widget.builder(
       context,
-      _previousEvent,
+      _event,
       widget.child,
     );
   }

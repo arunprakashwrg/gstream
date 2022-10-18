@@ -5,7 +5,7 @@ class DataController<T> with DisposableMixin {
     this._decoder,
     this._encoder,
     this._tag,
-  ) : _dataHistory = [];
+  );
 
   /// Gets the nearest [DataController] of the specified type and key to the current context.
   static DataController<T> of<T>(BuildContext context, [String? tag]) {
@@ -17,13 +17,21 @@ class DataController<T> with DisposableMixin {
 
   final T Function(dynamic json) _decoder;
   final Map<String, dynamic> Function(T instance) _encoder;
-  final List<Map<String, dynamic>> _dataHistory;
+  final List<Map<String, dynamic>> _dataHistory = [];
   final String? _tag;
   final _listeners = <DataCallback<T>>[];
 
   bool get hasListeners => _listeners.isNotEmpty;
   ControllerKey<T> get _key => ControllerKey<T>(_tag);
-  T get _currentData => _decoder(_dataHistory.last);
+  DataEvent<T> get lastEvent {
+    if (_dataHistory.isEmpty) {
+      return DataEvent.initial();
+    }
+
+    return DataEvent.success(
+      data: _decoder(_dataHistory.last),
+    );
+  }
 
   bool _pause = false;
   bool _replayHistoryOnAdd = false;
@@ -40,11 +48,11 @@ class DataController<T> with DisposableMixin {
 
   void resumeEvents() => _pause = false;
 
-  void notifyListeners() => _invokeListeners(data: _currentData);
+  void notifyListeners() => _invokeListeners(data: lastEvent.data);
 
-  void interval(Duration? duration) => _interval = duration;
+  void interval([Duration? duration]) => _interval = duration;
 
-  void throttle(Duration? duration) => _throttle = duration;
+  void throttle([Duration? duration]) => _throttle = duration;
 
   void _invokeListeners({
     T? data,
