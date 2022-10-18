@@ -35,6 +35,8 @@ class GStore {
       return;
     }
 
+    gLog('Registering controller with type: $T');
+
     final controller = DataController<T>._(
       decoder,
       encoder,
@@ -50,6 +52,7 @@ class GStore {
       throw ControllerNotInitializedException<T>();
     }
 
+    gLog('Accessing controller ${ControllerKey<T>(tag)}');
     return _dataControllers[ControllerKey<T>(tag)] as DataController<T>;
   }
 
@@ -59,6 +62,7 @@ class GStore {
   ]) {
     final controller = get<T>(tag);
     controller._removeListener(onEvent);
+    gLog('${onEvent} listener removed.');
   }
 
   void listen<T>(

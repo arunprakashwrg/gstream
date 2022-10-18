@@ -131,6 +131,7 @@ class DataController<T> with DisposableMixin {
         }
 
         callback(event);
+        gLog('Event emitted: $event');
         _lastEmittedTime = DateTime.now();
       }),
     );
@@ -166,16 +167,18 @@ class DataController<T> with DisposableMixin {
     );
   }
 
-  void add(T data) {
+  void add(T data, [bool notifyListeners = true]) {
     if (!hasListeners || _pause) {
       return;
     }
 
     _dataHistory.add(_encoder(data));
 
-    _invokeListeners(
-      data: data,
-    );
+    if (notifyListeners) {
+      _invokeListeners(
+        data: data,
+      );
+    }
   }
 
   void _addListener(DataCallback<T> onEvent) {
@@ -188,7 +191,7 @@ class DataController<T> with DisposableMixin {
     if (_dataHistory.isNotEmpty) {
       if (_replayHistoryOnAdd) {
         _dataHistory.forEach(
-          (element) => _invokeListeners(data: _decoder(element)),
+          (element) => onEvent(Event.success(data: _decoder(element))),
         );
 
         return;

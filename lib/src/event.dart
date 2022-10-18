@@ -22,6 +22,7 @@ class Event<T> {
 
   bool get hasError => data == null && error != null;
   bool get hasData => data != null;
+  bool get isInitial => !hasData && error == null && stackTrace == null;
 
   Type get _typeKey => typeOf<T>();
 

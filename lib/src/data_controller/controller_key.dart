@@ -10,19 +10,19 @@ class ControllerKey<T> {
 
   @override
   int get hashCode {
-    if (tag != null) {
-      return tag.hashCode + _typeKey.hashCode;
-    }
-
-    return _typeKey.hashCode;
+    return _typeKey.hashCode ^ (tag?.hashCode ?? 0);
   }
 
   @override
   bool operator ==(Object other) {
+    if (identical(other, this)) {
+      return true;
+    }
+
     if (other is! ControllerKey) {
       return false;
     }
 
-    return other.hashCode == hashCode;
+    return other.tag == tag && _typeKey.hashCode == other._typeKey.hashCode;
   }
 }

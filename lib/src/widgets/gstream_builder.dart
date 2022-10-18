@@ -3,7 +3,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:gstream/gstream.dart';
 import 'package:gstream/src/data_controller/data_callback.dart';
 import 'package:gstream/src/event.dart';
-import 'package:gstream/src/utilities/enums.dart';
 
 import '../utilities/typedefs.dart';
 
@@ -16,6 +15,7 @@ class GStreamBuilder<T> extends StatefulWidget {
     this.shouldRebuildCallback,
     this.disposeMode = ControllerDisposeMode.auto,
     this.onCreate,
+    this.fac,
     this.onDispose,
   }) : super(key: key);
 
@@ -23,6 +23,7 @@ class GStreamBuilder<T> extends StatefulWidget {
   final DataController<T> Function()? onCreate;
   final void Function()? onDispose;
   final EventBuilder<T> builder;
+  final T Function()? fac;
   final RebuildCallback<T>? shouldRebuildCallback;
   final Widget? child;
 
@@ -35,10 +36,11 @@ class GStreamBuilder<T> extends StatefulWidget {
 
 class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
   GStore get _store {
-    return context.dependOnInheritedWidgetOfExactType<GStoreScope>()!.store;
+    return _storeScope.store;
   }
 
   late final DataCallback<T> _callback = DataCallback(onEvent: _onNewEvent);
+  late GStoreScope _storeScope;
 
   DataController<T>? _dataController;
   Event<T> _event = Event<T>.initial();
@@ -48,7 +50,18 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
   DataController<T> get controller => _dataController!;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _storeScope = context.dependOnInheritedWidgetOfExactType<GStoreScope>()!;
+  }
+
+  @override
   void initState() {
+    if (widget.fac != null) {
+      _event = Event<T>.success(data: widget.fac!());
+      _prevEvent = _event;
+    }
+
     super.initState();
 
     SchedulerBinding.instance!.addPostFrameCallback(
@@ -107,11 +120,14 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
   @override
   void dispose() {
     super.dispose();
-    _store.removeListener(_callback);
+    _store.removeListener<T>(_callback, widget.tag);
 
     switch (widget.disposeMode) {
+      case ControllerDisposeMode.cached:
+      case ControllerDisposeMode.persist:
+        break;
+
       case ControllerDisposeMode.force:
-        controller.dispose();
         _store.remove<T>(widget.tag);
         widget.onDispose?.call();
         break;
@@ -122,7 +138,6 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
           break;
         }
 
-        controller.dispose();
         _store.remove<T>(widget.tag);
         widget.onDispose?.call();
         break;
