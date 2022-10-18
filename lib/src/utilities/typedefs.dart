@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../data_event.dart';
-
-typedef DataCallback<T> = void Function(DataEvent<T> data);
+import '../event.dart';
 
 typedef EventBuilder<T> = Widget Function(
   BuildContext context,
-  DataEvent<T> data,
+  Event<T> data,
   Widget? child,
 );
 
 typedef RebuildCallback<T> = bool Function(
-  DataEvent<T> previous,
-  DataEvent<T> current,
+  Event<T> previous,
+  Event<T> current,
 );
 
-typedef EventFold<E, T> = DataEvent<E> Function(
-  DataEvent<T> current,
-  DataEvent<T> other,
+typedef EventFold<E, T> = Event<E> Function(
+  Event<T> current,
+  Event<T> other,
 );

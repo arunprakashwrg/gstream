@@ -1,5 +1,6 @@
 part of '../gstore.dart';
 
+/// Interface to operate on the associated data with the type [T]
 class DataController<T> with DisposableMixin {
   DataController._(
     this._decoder,
@@ -19,16 +20,19 @@ class DataController<T> with DisposableMixin {
   final Map<String, dynamic> Function(T instance) _encoder;
   final List<Map<String, dynamic>> _dataHistory = [];
   final String? _tag;
-  final _listeners = <DataCallback<T>>[];
+  final _listeners = <DataCallback<T>>{};
 
+  /// Denotes if we have any registered listeners currently.
   bool get hasListeners => _listeners.isNotEmpty;
   ControllerKey<T> get _key => ControllerKey<T>(_tag);
-  DataEvent<T> get lastEvent {
+
+  /// Denotes the last emitted event.
+  Event<T> get lastEvent {
     if (_dataHistory.isEmpty) {
-      return DataEvent.initial();
+      return Event.initial();
     }
 
-    return DataEvent.success(
+    return Event.success(
       data: _decoder(_dataHistory.last),
     );
   }
@@ -39,11 +43,16 @@ class DataController<T> with DisposableMixin {
   Duration? _interval;
   Duration? _throttle;
 
+  /// Denotes if this controller is throttle set.
   bool get throttled => _throttle != null;
+
+  /// Denotes if this controller has intervel set.
   bool get intervelled => _interval != null;
 
-  void withReplay(bool value) => _replayHistoryOnAdd = value;
+  /// Enable to retain history on registering a new controller
+  void historyReplay([bool? value]) => _replayHistoryOnAdd = value ?? false;
 
+  /// Called to pause emitting events
   void pauseEvents() => _pause = true;
 
   void resumeEvents() => _pause = false;
@@ -52,26 +61,50 @@ class DataController<T> with DisposableMixin {
 
   void interval([Duration? duration]) => _interval = duration;
 
+  void removeInterval() => _interval = null;
+
+  void removeThrottle() => _throttle = null;
+
   void throttle([Duration? duration]) => _throttle = duration;
+
+  void resetModifiers() {
+    _pause = false;
+    _interval = null;
+    _replayHistoryOnAdd = false;
+    _throttle = null;
+  }
+
+  void _removeListener(DataCallback<T> callback) {
+    if (!_listeners.contains(callback)) {
+      return;
+    }
+
+    gLog('Removing listeners with id: ${callback.id}');
+    return _listeners.removeWhere((element) => element == callback);
+  }
 
   void _invokeListeners({
     T? data,
     Object? error,
     StackTrace? stackTrace,
   }) {
+    if (error != null) {
+      gLog(error, stackTrace);
+    }
+
     if (!hasListeners) {
       return;
     }
 
     final event = $(() {
       if (data == null) {
-        return DataEvent<T>.error(
+        return Event<T>.error(
           error: error,
           stackTrace: stackTrace,
         );
       }
 
-      return DataEvent<T>.success(data: data);
+      return Event<T>.success(data: data);
     });
 
     Future.wait(
@@ -79,18 +112,22 @@ class DataController<T> with DisposableMixin {
         final lastEventTime = DateTime.now().difference(_lastEmittedTime);
 
         if (_throttle != null && lastEventTime < _throttle!) {
+          gLog(
+            'Ignoring event as controller is throttled... (${lastEventTime.inMilliseconds} ms)',
+          );
           return;
         }
 
-        if (_interval != null) {
-          if (lastEventTime < _interval!) {
-            Future.delayed(lastEventTime, () {
-              callback(event);
-              _lastEmittedTime = DateTime.now();
-            });
+        if (_interval != null && lastEventTime < _interval!) {
+          gLog(
+            'Delaying event due to interval... ${lastEventTime.inMilliseconds} ms',
+          );
+          Future.delayed(lastEventTime, () {
+            callback(event);
+            _lastEmittedTime = DateTime.now();
+          });
 
-            return;
-          }
+          return;
         }
 
         callback(event);
@@ -99,17 +136,15 @@ class DataController<T> with DisposableMixin {
     );
   }
 
-  void insertAsync(Future<T> Function() dataGenerator) {
+  void addAsync(Future<T> Function() dataGenerator) {
     if (!hasListeners) {
       return;
     }
 
     dataGenerator().then(
-      (value) {
-        insert(value);
-      },
+      add,
       onError: (error, stackTrace) {
-        insertError(
+        addError(
           error,
           stackTrace ?? StackTrace.current,
         );
@@ -117,7 +152,7 @@ class DataController<T> with DisposableMixin {
     );
   }
 
-  void insertError(
+  void addError(
     Object error, [
     StackTrace? stackTrace,
   ]) {
@@ -131,7 +166,7 @@ class DataController<T> with DisposableMixin {
     );
   }
 
-  void insert(T data) {
+  void add(T data) {
     if (!hasListeners || _pause) {
       return;
     }
@@ -143,7 +178,7 @@ class DataController<T> with DisposableMixin {
     );
   }
 
-  void _on(DataCallback<T> onEvent) {
+  void _addListener(DataCallback<T> onEvent) {
     if (_listeners.contains(onEvent)) {
       return;
     }
@@ -167,5 +202,10 @@ class DataController<T> with DisposableMixin {
   void dispose() {
     _dataHistory.clear();
     _listeners.clear();
+    _pause = false;
+    _interval = null;
+    _lastEmittedTime = DateTime.now();
+    _replayHistoryOnAdd = false;
+    _throttle = null;
   }
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:gstream/gstream.dart';
-import 'package:gstream/src/data_event.dart';
+import 'package:gstream/src/data_controller/data_callback.dart';
+import 'package:gstream/src/event.dart';
 import 'package:gstream/src/utilities/enums.dart';
 
 import '../utilities/typedefs.dart';
@@ -37,9 +38,11 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
     return context.dependOnInheritedWidgetOfExactType<GStoreScope>()!.store;
   }
 
+  late final DataCallback<T> _callback = DataCallback(onEvent: _onNewEvent);
+
   DataController<T>? _dataController;
-  DataEvent<T> _event = DataEvent<T>.initial();
-  DataEvent<T> _prevEvent = DataEvent<T>.initial();
+  Event<T> _event = Event<T>.initial();
+  Event<T> _prevEvent = Event<T>.initial();
   Widget? _cachedChild;
 
   DataController<T> get controller => _dataController!;
@@ -66,42 +69,45 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
         }
 
         _store.listen<T>(
-          (newEvent) {
-            if (newEvent == _event || !mounted) {
-              // dont rebuild if both states are equal or state is no longer mounted
-              return;
-            }
-
-            if (widget.shouldRebuildCallback != null) {
-              final shouldRebuild = widget.shouldRebuildCallback!(
-                _event,
-                newEvent,
-              );
-
-              if (shouldRebuild) {
-                setState(() {
-                  _prevEvent = _event;
-                  _event = newEvent;
-                });
-
-                return;
-              }
-            }
-
-            setState(() {
-              _prevEvent = _event;
-              _event = newEvent;
-            });
-          },
+          _callback,
           widget.tag,
         );
       },
     );
   }
 
+  void _onNewEvent(Event<T> newEvent) {
+    if (newEvent == _event || !mounted) {
+      // dont rebuild if both states are equal or state is no longer mounted
+      return;
+    }
+
+    if (widget.shouldRebuildCallback != null) {
+      final shouldRebuild = widget.shouldRebuildCallback!(
+        _event,
+        newEvent,
+      );
+
+      if (shouldRebuild) {
+        setState(() {
+          _prevEvent = _event;
+          _event = newEvent;
+        });
+
+        return;
+      }
+    }
+
+    setState(() {
+      _prevEvent = _event;
+      _event = newEvent;
+    });
+  }
+
   @override
   void dispose() {
     super.dispose();
+    _store.removeListener(_callback);
 
     switch (widget.disposeMode) {
       case ControllerDisposeMode.force:

@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:gstream/src/data_controller/controller_key.dart';
-import 'package:gstream/src/data_event.dart';
+import 'package:gstream/src/event.dart';
+import 'package:gstream/src/exceptions/controller_not_initialized_exception.dart';
 import 'package:gstream/src/mixins/disposable_mixin.dart';
+import 'package:gstream/src/utilities/glog.dart';
 import 'package:gstream/src/utilities/helpers.dart';
-import 'package:gstream/src/utilities/typedefs.dart';
+
+import 'data_controller/data_callback.dart';
 
 part 'data_controller/data_controller.dart';
 part 'widgets/gstore_scope.dart';
@@ -44,10 +47,18 @@ class GStore {
 
   DataController<T> get<T>([String? tag]) {
     if (!contains<T>(tag)) {
-      throw Exception("DataController with type ${T} doesn't exist!");
+      throw ControllerNotInitializedException<T>();
     }
 
     return _dataControllers[ControllerKey<T>(tag)] as DataController<T>;
+  }
+
+  void removeListener<T>(
+    DataCallback<T> onEvent, [
+    String? tag,
+  ]) {
+    final controller = get<T>(tag);
+    controller._removeListener(onEvent);
   }
 
   void listen<T>(
@@ -55,7 +66,7 @@ class GStore {
     String? tag,
   ]) {
     final controller = get<T>(tag);
-    controller._on(onEvent);
+    controller._addListener(onEvent);
   }
 
   bool contains<T>([String? tag]) {

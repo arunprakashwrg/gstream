@@ -1,17 +1,17 @@
 import 'package:gstream/src/utilities/helpers.dart';
 
-class DataEvent<T> {
-  const DataEvent.success({
+class Event<T> {
+  const Event.success({
     required this.data,
   })  : error = null,
         stackTrace = null;
 
-  const DataEvent.initial()
+  const Event.initial()
       : error = null,
         data = null,
         stackTrace = null;
 
-  const DataEvent.error({
+  const Event.error({
     required this.error,
     required this.stackTrace,
   }) : data = null;
@@ -27,7 +27,7 @@ class DataEvent<T> {
 
   @override
   bool operator ==(Object other) {
-    if (other is! DataEvent) {
+    if (other is! Event) {
       return false;
     }
 
