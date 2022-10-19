@@ -146,7 +146,15 @@ class DataController<T> with DisposableMixin {
       return;
     }
 
-    _set = Event<T>.success(data: data);
+    final event = Event<T>.success(data: data);
+
+    if (!notifyListeners) {
+      _prevEvent = _event;
+      _event = event;
+      return;
+    }
+
+    _set = event;
   }
 
   void _addListener(DataCallback<T> onEvent) {
