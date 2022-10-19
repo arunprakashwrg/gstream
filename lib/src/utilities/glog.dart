@@ -1,6 +1,6 @@
 import 'dart:developer';
 
-import 'package:gstream/src/exceptions/g_exception.dart';
+import '../exceptions/g_exception.dart';
 
 void gLog(Object obj, [StackTrace? stackTrace]) {
   if (obj is GException) {

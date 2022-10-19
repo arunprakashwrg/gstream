@@ -1,4 +1,4 @@
-import 'package:gstream/src/event.dart';
+import '../event.dart';
 
 import '../utilities/typedefs.dart';
 

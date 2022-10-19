@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_positional_boolean_parameters, use_setters_to_change_properties
+
 part of '../gstore.dart';
 
 /// Interface to operate on the associated data with the type [T]
@@ -29,7 +31,7 @@ class DataController<T> with DisposableMixin {
   /// Denotes the last emitted event.
   Event<T> get lastEvent {
     if (_dataHistory.isEmpty) {
-      return Event.initial();
+      return const Event.initial();
     }
 
     return Event.success(
@@ -144,7 +146,8 @@ class DataController<T> with DisposableMixin {
 
     dataGenerator().then(
       add,
-      onError: (error, stackTrace) {
+      // ignore: avoid_types_on_closure_parameters
+      onError: (Object error, StackTrace? stackTrace) {
         addError(
           error,
           stackTrace ?? StackTrace.current,
@@ -190,9 +193,9 @@ class DataController<T> with DisposableMixin {
 
     if (_dataHistory.isNotEmpty) {
       if (_replayHistoryOnAdd) {
-        _dataHistory.forEach(
-          (element) => onEvent(Event.success(data: _decoder(element))),
-        );
+        for (final history in _dataHistory) {
+          onEvent(Event.success(data: _decoder(history)));
+        }
 
         return;
       }

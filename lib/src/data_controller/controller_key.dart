@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gstream/src/utilities/helpers.dart';
+import '../utilities/helpers.dart';
 
 @immutable
 class ControllerKey<T> {

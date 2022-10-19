@@ -1,6 +1,5 @@
-import 'package:gstream/src/exceptions/g_exception.dart';
-
 import '../utilities/helpers.dart';
+import 'g_exception.dart';
 
 class ControllerDisposedException<T> extends GException {
   ControllerDisposedException()

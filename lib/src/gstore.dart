@@ -1,14 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:gstream/src/data_controller/controller_key.dart';
-import 'package:gstream/src/event.dart';
-import 'package:gstream/src/exceptions/controller_not_initialized_exception.dart';
-import 'package:gstream/src/mixins/disposable_mixin.dart';
-import 'package:gstream/src/utilities/glog.dart';
-import 'package:gstream/src/utilities/helpers.dart';
 
+import 'data_controller/controller_key.dart';
 import 'data_controller/data_callback.dart';
+import 'event.dart';
+import 'exceptions/controller_not_initialized_exception.dart';
+import 'mixins/disposable_mixin.dart';
+import 'utilities/glog.dart';
+import 'utilities/helpers.dart';
 
 part 'data_controller/data_controller.dart';
 part 'widgets/gstore_scope.dart';
@@ -62,7 +63,7 @@ class GStore {
   ]) {
     final controller = get<T>(tag);
     controller._removeListener(onEvent);
-    gLog('${onEvent} listener removed.');
+    gLog('$onEvent listener removed.');
   }
 
   void listen<T>(
@@ -71,13 +72,14 @@ class GStore {
   ]) {
     final controller = get<T>(tag);
     controller._addListener(onEvent);
+    gLog('$onEvent listener added.');
   }
 
   bool contains<T>([String? tag]) {
     return _dataControllers.containsKey(ControllerKey<T>(tag));
   }
 
-  void remove<T>([String? tag]) {
+  void dispose<T>([String? tag]) {
     if (!contains<T>(tag)) {
       return;
     }
@@ -85,5 +87,13 @@ class GStore {
     final val = get<T>(tag);
     val.dispose();
     _dataControllers.remove(ControllerKey<T>(tag));
+  }
+
+  void disposeAll() {
+    for (final entry in _dataControllers.entries) {
+      entry.value.dispose();
+    }
+
+    _dataControllers.clear();
   }
 }

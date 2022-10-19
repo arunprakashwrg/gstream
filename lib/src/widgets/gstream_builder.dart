@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:gstream/gstream.dart';
-import 'package:gstream/src/data_controller/data_callback.dart';
-import 'package:gstream/src/event.dart';
+import '../../gstream.dart';
+import '../data_controller/data_callback.dart';
+import '../event.dart';
 
 import '../utilities/typedefs.dart';
 
@@ -32,6 +33,21 @@ class GStreamBuilder<T> extends StatefulWidget {
 
   @override
   State<GStreamBuilder> createState() => _GStreamBuilderState<T>();
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+        .add(EnumProperty<ControllerDisposeMode>('disposeMode', disposeMode));
+    properties.add(ObjectFlagProperty<RebuildCallback<T>?>.has(
+        'shouldRebuildCallback', shouldRebuildCallback));
+    properties.add(ObjectFlagProperty<T Function()?>.has('fac', fac));
+    properties.add(ObjectFlagProperty<EventBuilder<T>>.has('builder', builder));
+    properties
+        .add(ObjectFlagProperty<void Function()?>.has('onDispose', onDispose));
+    properties.add(ObjectFlagProperty<DataController<T> Function()?>.has(
+        'onCreate', onCreate));
+    properties.add(StringProperty('tag', tag));
+  }
 }
 
 class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
@@ -128,7 +144,7 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
         break;
 
       case ControllerDisposeMode.force:
-        _store.remove<T>(widget.tag);
+        _store.dispose<T>(widget.tag);
         widget.onDispose?.call();
         break;
 
@@ -138,7 +154,7 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
           break;
         }
 
-        _store.remove<T>(widget.tag);
+        _store.dispose<T>(widget.tag);
         widget.onDispose?.call();
         break;
     }
@@ -155,5 +171,12 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
       _event,
       widget.child,
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+        .add(DiagnosticsProperty<DataController<T>>('controller', controller));
   }
 }

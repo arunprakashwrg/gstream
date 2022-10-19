@@ -5,5 +5,5 @@ Type typeOf<T>() => T;
 T $<T>(T Function() callback) => callback();
 
 String generateRandomId() {
-  return Uuid().v4();
+  return const Uuid().v4();
 }

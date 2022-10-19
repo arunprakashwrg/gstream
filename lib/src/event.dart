@@ -1,5 +1,8 @@
-import 'package:gstream/src/utilities/helpers.dart';
+import 'package:flutter/material.dart';
 
+import 'utilities/helpers.dart';
+
+@immutable
 class Event<T> {
   const Event.success({
     required this.data,
@@ -32,7 +35,7 @@ class Event<T> {
       return false;
     }
 
-    return identical(other, this) || other.data == this.data;
+    return identical(other, this) || other.data == data;
   }
 
   @override

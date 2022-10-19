@@ -2,5 +2,5 @@
 library gstream;
 
 export 'src/gstore.dart';
-export 'src/widgets/gstream_builder.dart';
 export 'src/utilities/enums.dart';
+export 'src/widgets/gstream_builder.dart';

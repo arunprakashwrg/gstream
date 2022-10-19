@@ -1,6 +1,9 @@
+import 'package:flutter/material.dart';
+
 import '../event.dart';
 import '../utilities/helpers.dart';
 
+@immutable
 class DataCallback<T> {
   DataCallback({
     required this.onEvent,
