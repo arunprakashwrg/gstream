@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../gstream.dart';
 import 'data_controller/controller_key.dart';
 import 'data_controller/data_callback.dart';
 import 'data_controller/persistance_callback.dart';

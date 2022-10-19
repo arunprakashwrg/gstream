@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../gstream.dart';
 import 'utilities/helpers.dart';
 
 @immutable
-class Event<T> {
+class Event<T> extends Equatable {
+  const Event({
+    this.data,
+    this.error,
+    this.stackTrace,
+  });
+
   const Event.success({
     required this.data,
   })  : error = null,
@@ -30,14 +37,12 @@ class Event<T> {
   Type get _typeKey => typeOf<T>();
 
   @override
-  bool operator ==(Object other) {
-    if (other is! Event) {
-      return false;
-    }
-
-    return identical(other, this) || other.data == data;
+  List<Object?> get props {
+    return [
+      data,
+      _typeKey,
+      error,
+      stackTrace,
+    ];
   }
-
-  @override
-  int get hashCode => (data?.hashCode ?? 0) ^ _typeKey.hashCode;
 }

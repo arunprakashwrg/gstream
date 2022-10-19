@@ -5,6 +5,7 @@ import '../../gstream.dart';
 import '../data_controller/data_callback.dart';
 import '../event.dart';
 
+import '../utilities/glog.dart';
 import '../utilities/typedefs.dart';
 
 class GStreamBuilder<T> extends StatefulWidget {
@@ -55,38 +56,36 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
     return _storeScope.store;
   }
 
-  late final DataCallback<T> _callback = DataCallback(onEvent: _onNewEvent);
+  late final DataCallback<T> _callback = DataCallback(
+    onEvent: _onNewEvent,
+    id: widget.tag,
+  );
   late GStoreScope _storeScope;
 
   DataController<T>? _dataController;
-  Event<T> _event = Event<T>.initial();
+  Event<T> _defaultEvent = Event<T>.initial();
 
+  // ignore: diagnostic_describe_all_properties
   DataController<T> get controller => _dataController!;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _storeScope = context.dependOnInheritedWidgetOfExactType<GStoreScope>()!;
+    // _dataController ??= DataController.of<T>(context, widget.tag);
   }
 
   @override
   void initState() {
     if (widget.fac != null) {
-      _event = Event<T>.success(data: widget.fac!());
+      _defaultEvent = Event<T>.success(data: widget.fac!());
+      gLog('Default event assigned: ${_defaultEvent.toString()}');
     }
 
     super.initState();
 
     SchedulerBinding.instance!.addPostFrameCallback(
       (_) {
-        if (_dataController == null) {
-          if (widget.onCreate != null) {
-            _dataController = widget.onCreate!();
-          }
-
-          _dataController ??= DataController.of<T>(context, widget.tag);
-        }
-
         // if (_event != _dataController!.previousEvent) {
         //   setState(() {
         //     _event = _dataController!.previousEvent;
@@ -98,37 +97,41 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
           widget.tag,
         );
 
-        if (_event.hasData) {
-          _dataController!.add(_event.data!);
+        if (_defaultEvent.hasData &&
+            _dataController!.currentEvent != _defaultEvent) {
+          _dataController!.add(_defaultEvent.data!);
+          gLog(
+            'Added default event: ${_dataController!.toString()} => ${_defaultEvent.toString()}',
+          );
         }
       },
     );
   }
 
-  void _onNewEvent(Event<T> newEvent) {
-    if (newEvent == _event || !mounted) {
+  void _onNewEvent(Event<T> _) {
+    // TODO: This comparison is failing due to a bug
+    if (_dataController!.currentEvent == _dataController!.previousEvent ||
+        !mounted) {
       // dont rebuild if both states are equal or state is no longer mounted
+      gLog(
+        'State rebuild is ignored as either both events are equal or the widget is not mounted',
+      );
       return;
     }
 
     if (widget.shouldRebuildCallback != null) {
       final shouldRebuild = widget.shouldRebuildCallback!(
-        _event,
-        newEvent,
+        _dataController!.previousEvent,
+        _dataController!.currentEvent,
       );
 
       if (shouldRebuild) {
-        setState(() {
-          _event = newEvent;
-        });
-
+        setState(() {});
         return;
       }
     }
 
-    setState(() {
-      _event = newEvent;
-    });
+    setState(() {});
   }
 
   @override
@@ -160,17 +163,19 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
   @override
   Widget build(BuildContext context) {
+    if (_dataController == null) {
+      if (widget.onCreate != null) {
+        _dataController = widget.onCreate!();
+      }
+
+      _dataController ??= DataController.of<T>(context, widget.tag);
+      gLog('Controller assigned: ${_dataController!.toString()}');
+    }
+
     return widget.builder(
       context,
-      _event,
+      _dataController!.currentEvent,
       widget.child,
     );
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties
-        .add(DiagnosticsProperty<DataController<T>>('controller', controller));
   }
 }

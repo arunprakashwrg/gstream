@@ -3,12 +3,13 @@
 part of '../gstore.dart';
 
 /// Interface to operate on the associated data with the type [T]
-class DataController<T> with DisposableMixin {
+
+// ignore: must_be_immutable
+class DataController<T> extends Equatable with DisposableMixin {
   DataController._(
     this._tag,
     this._persistanceCallback,
-  )   : _event = Event<T>.initial(),
-        _prevEvent = Event<T>.initial();
+  );
 
   /// Gets the nearest [DataController] of the specified type and key to the current context.
   static DataController<T> of<T>(BuildContext context, [String? tag]) {
@@ -26,8 +27,8 @@ class DataController<T> with DisposableMixin {
   bool get hasListeners => _listeners.isNotEmpty;
   ControllerKey<T> get _key => ControllerKey<T>(_tag);
 
-  Event<T> _event;
-  Event<T> _prevEvent;
+  Event<T> _event = Event<T>.initial();
+  Event<T> _prevEvent = Event<T>.initial();
   bool _pause = false;
   DateTime _lastEmittedTime = DateTime.now();
   Duration? _interval;
@@ -40,8 +41,11 @@ class DataController<T> with DisposableMixin {
   bool get intervelled => _interval != null;
 
   void _setState(Event<T> event, [bool shouldNotify = true]) {
+    // TODO: Bugged: Previous and current state is same
     _prevEvent = _event;
+    print('Previous Event: ${_prevEvent.data}');
     _event = event;
+    print('Current Event: ${_event.data}');
 
     if (shouldNotify) {
       notifyListeners();
@@ -107,14 +111,14 @@ class DataController<T> with DisposableMixin {
         }
 
         callback(currentEvent);
-        gLog('Event emitted: $currentEvent');
+        gLog('Event emitted: ${currentEvent.data?.toString()}');
         _lastEmittedTime = DateTime.now();
       }),
     );
   }
 
   void addAsync(Future<T> Function() dataGenerator) {
-    if (!hasListeners) {
+    if (_pause) {
       return;
     }
 
@@ -134,7 +138,7 @@ class DataController<T> with DisposableMixin {
     Object error, [
     StackTrace? stackTrace,
   ]) {
-    if (!hasListeners) {
+    if (_pause) {
       return;
     }
 
@@ -147,7 +151,7 @@ class DataController<T> with DisposableMixin {
   }
 
   void add(T data, [bool notifyListeners = true]) {
-    if (!hasListeners || _pause) {
+    if (_pause) {
       return;
     }
 
@@ -169,5 +173,20 @@ class DataController<T> with DisposableMixin {
     _interval = null;
     _lastEmittedTime = DateTime.now();
     _throttle = null;
+  }
+
+  @override
+  List<Object?> get props {
+    return [
+      _listeners,
+      _pause,
+      _interval,
+      _lastEmittedTime,
+      _throttle,
+      currentEvent,
+      previousEvent,
+      _key,
+      _tag,
+    ];
   }
 }
