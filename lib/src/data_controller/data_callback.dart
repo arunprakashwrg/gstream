@@ -9,7 +9,7 @@ class DataCallback<T> {
     required this.onEvent,
   }) : id = generateRandomId();
 
-  final void Function(Event<T> data) onEvent;
+  final void Function(Event<T> event) onEvent;
   final String id;
 
   void call(Event<T> data) => onEvent(data);

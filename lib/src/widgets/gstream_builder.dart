@@ -87,16 +87,20 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
           _dataController ??= DataController.of<T>(context, widget.tag);
         }
 
-        if (_event != _dataController!.previousEvent) {
-          setState(() {
-            _event = _dataController!.previousEvent;
-          });
-        }
+        // if (_event != _dataController!.previousEvent) {
+        //   setState(() {
+        //     _event = _dataController!.previousEvent;
+        //   });
+        // }
 
         _store.listen<T>(
           _callback,
           widget.tag,
         );
+
+        if (_event.hasData) {
+          _dataController!.add(_event.data!);
+        }
       },
     );
   }

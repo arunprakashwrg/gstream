@@ -39,10 +39,13 @@ class DataController<T> with DisposableMixin {
   /// Denotes if this controller has intervel set.
   bool get intervelled => _interval != null;
 
-  set _set(Event<T> event) {
+  void _setState(Event<T> event, [bool shouldNotify = true]) {
     _prevEvent = _event;
     _event = event;
-    notifyListeners();
+
+    if (shouldNotify) {
+      notifyListeners();
+    }
   }
 
   Event<T> get currentEvent => _event;
@@ -78,6 +81,8 @@ class DataController<T> with DisposableMixin {
   }
 
   void notifyListeners() {
+    gLog('${_listeners.length} listeners are currently listening.');
+
     Future.wait(
       _listeners.map((callback) async {
         final lastEventTime = DateTime.now().difference(_lastEmittedTime);
@@ -135,10 +140,10 @@ class DataController<T> with DisposableMixin {
 
     gLog(error, stackTrace);
 
-    _set = Event<T>.error(
+    _setState(Event<T>.error(
       error: error,
       stackTrace: stackTrace,
-    );
+    ));
   }
 
   void add(T data, [bool notifyListeners = true]) {
@@ -146,15 +151,7 @@ class DataController<T> with DisposableMixin {
       return;
     }
 
-    final event = Event<T>.success(data: data);
-
-    if (!notifyListeners) {
-      _prevEvent = _event;
-      _event = event;
-      return;
-    }
-
-    _set = event;
+    _setState(Event<T>.success(data: data), notifyListeners);
   }
 
   void _addListener(DataCallback<T> onEvent) {
