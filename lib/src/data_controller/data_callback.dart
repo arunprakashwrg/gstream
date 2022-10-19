@@ -5,12 +5,15 @@ import '../utilities/helpers.dart';
 
 @immutable
 class DataCallback<T> {
-  DataCallback({
+  const DataCallback({
     required this.onEvent,
-  }) : id = generateRandomId();
+    this.id,
+  });
 
   final void Function(Event<T> event) onEvent;
-  final String id;
+  final String? id;
+
+  Type get _typeKey => typeOf<T>();
 
   void call(Event<T> data) => onEvent(data);
 
@@ -24,9 +27,9 @@ class DataCallback<T> {
       return false;
     }
 
-    return id == other.id;
+    return id == other.id && _typeKey == other._typeKey;
   }
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode => (id?.hashCode ?? 0) ^ _typeKey.hashCode;
 }
