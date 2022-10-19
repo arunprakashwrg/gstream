@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 
 import 'data_controller/controller_key.dart';
 import 'data_controller/data_callback.dart';
+import 'data_controller/persistance_callback.dart';
 import 'event.dart';
 import 'exceptions/controller_not_initialized_exception.dart';
 import 'mixins/disposable_mixin.dart';
 import 'utilities/glog.dart';
-import 'utilities/helpers.dart';
 
 part 'data_controller/data_controller.dart';
 part 'widgets/gstore_scope.dart';
@@ -27,8 +27,7 @@ class GStore {
   bool get isEmpty => _dataControllers.isEmpty;
 
   void register<T>({
-    required Map<String, dynamic> Function(T instance) encoder,
-    required T Function(dynamic json) decoder,
+    PersistanceCallback<T>? persistanceCallback,
     String? tag,
     void Function(DataController<T> controller)? onCreate,
   }) {
@@ -39,9 +38,8 @@ class GStore {
     gLog('Registering controller with type: $T');
 
     final controller = DataController<T>._(
-      decoder,
-      encoder,
       tag,
+      persistanceCallback,
     );
 
     _dataControllers[controller._key] = controller;

@@ -60,8 +60,6 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
   DataController<T>? _dataController;
   Event<T> _event = Event<T>.initial();
-  Event<T> _prevEvent = Event<T>.initial();
-  Widget? _cachedChild;
 
   DataController<T> get controller => _dataController!;
 
@@ -75,7 +73,6 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
   void initState() {
     if (widget.fac != null) {
       _event = Event<T>.success(data: widget.fac!());
-      _prevEvent = _event;
     }
 
     super.initState();
@@ -90,10 +87,9 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
           _dataController ??= DataController.of<T>(context, widget.tag);
         }
 
-        if (_event != _dataController!.lastEvent) {
+        if (_event != _dataController!.previousEvent) {
           setState(() {
-            _event = _dataController!.lastEvent;
-            _prevEvent = _event;
+            _event = _dataController!.previousEvent;
           });
         }
 
@@ -119,7 +115,6 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
       if (shouldRebuild) {
         setState(() {
-          _prevEvent = _event;
           _event = newEvent;
         });
 
@@ -128,7 +123,6 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
     }
 
     setState(() {
-      _prevEvent = _event;
       _event = newEvent;
     });
   }
@@ -162,11 +156,7 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
   @override
   Widget build(BuildContext context) {
-    if (_cachedChild != null && _event == _prevEvent) {
-      return _cachedChild!;
-    }
-
-    return _cachedChild = widget.builder(
+    return widget.builder(
       context,
       _event,
       widget.child,
