@@ -11,20 +11,25 @@ class Event<T> extends Equatable {
     this.stackTrace,
   });
 
-  const Event.success({
-    required this.data,
-  })  : error = null,
-        stackTrace = null;
+  factory Event.success({
+    required T data,
+  }) {
+    return Event<T>(data: data);
+  }
 
-  const Event.initial()
-      : error = null,
-        data = null,
-        stackTrace = null;
+  factory Event.initial() {
+    return Event<T>();
+  }
 
-  const Event.error({
-    required this.error,
-    required this.stackTrace,
-  }) : data = null;
+  factory Event.error({
+    required Object error,
+    required StackTrace? stackTrace,
+  }) {
+    return Event<T>(
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
 
   final T? data;
   final Object? error;
@@ -35,6 +40,14 @@ class Event<T> extends Equatable {
   bool get isInitial => !hasData && error == null && stackTrace == null;
 
   Type get _typeKey => typeOf<T>();
+
+  Event<T> clone() {
+    return Event<T>(
+      data: data,
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
 
   @override
   List<Object?> get props {

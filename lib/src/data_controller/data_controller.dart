@@ -40,9 +40,11 @@ class DataController<T> extends Equatable with DisposableMixin {
   /// Denotes if this controller has intervel set.
   bool get intervelled => _interval != null;
 
+  bool get isDefaultEvent => _event.isInitial;
+
   void _setState(Event<T> event, [bool shouldNotify = true]) {
     // TODO: Bugged: Previous and current state is same
-    _prevEvent = _event;
+    _prevEvent = _event.clone();
     print('Previous Event: ${_prevEvent.data}');
     _event = event;
     print('Current Event: ${_event.data}');
