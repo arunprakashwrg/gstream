@@ -17,7 +17,7 @@ class GStreamBuilder<T> extends StatefulWidget {
     this.shouldRebuildCallback,
     this.disposeMode = ControllerDisposeMode.auto,
     this.onCreate,
-    required this.initialState,
+    required this.initialStateCallback,
     this.onDispose,
   }) : super(key: key);
 
@@ -25,7 +25,7 @@ class GStreamBuilder<T> extends StatefulWidget {
   final DataController<T> Function()? onCreate;
   final void Function()? onDispose;
   final EventBuilder<T> builder;
-  final T initialState;
+  final T Function() initialStateCallback;
   final RebuildCallback<T>? shouldRebuildCallback;
   final Widget? child;
 
@@ -47,22 +47,21 @@ class GStreamBuilder<T> extends StatefulWidget {
     properties.add(ObjectFlagProperty<DataController<T> Function()?>.has(
         'onCreate', onCreate));
     properties.add(StringProperty('tag', tag));
-    properties.add(DiagnosticsProperty<T>('initialState', initialState));
+    properties.add(ObjectFlagProperty<T Function()>.has(
+        'initialStateCallback', initialStateCallback));
   }
 }
 
 class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
-  GStore get _store {
-    return _storeScope.store;
-  }
+  late GStore _store;
 
   late final DataCallback<T> _callback = DataCallback(
     onEvent: _onNewEvent,
     id: widget.tag,
   );
-  late GStoreScope _storeScope;
 
   DataController<T>? _dataController;
+  Event<T> _event = Event<T>.initial();
 
   // ignore: diagnostic_describe_all_properties
   DataController<T> get controller => _dataController!;
@@ -70,7 +69,7 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _storeScope = context.dependOnInheritedWidgetOfExactType<GStoreScope>()!;
+    _store = context.dependOnInheritedWidgetOfExactType<GStoreScope>()!.store;
 
     if (_dataController == null) {
       if (widget.onCreate != null) {
@@ -89,10 +88,6 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
     print('INIT STATE CALLED: GSTREAM BUILDER');
     SchedulerBinding.instance!.addPostFrameCallback(
       (_) {
-        if (controller.isDefaultEvent) {
-          controller.add(widget.initialState);
-        }
-
         _store.listen<T>(
           _callback,
           widget.tag,
@@ -101,10 +96,9 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
     );
   }
 
-  void _onNewEvent(Event<T> _) {
+  void _onNewEvent(Event<T> newEvent) {
     // TODO: This comparison is failing due to a bug
-    if (_dataController!.currentEvent == _dataController!.previousEvent ||
-        !mounted) {
+    if (newEvent == _event || !mounted) {
       // dont rebuild if both states are equal or state is no longer mounted
       gLog(
         'State rebuild is ignored as either both events are equal or the widget is not mounted',
@@ -114,17 +108,21 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
     if (widget.shouldRebuildCallback != null) {
       final shouldRebuild = widget.shouldRebuildCallback!(
-        _dataController!.previousEvent,
-        _dataController!.currentEvent,
+        _event,
+        newEvent,
       );
 
       if (shouldRebuild) {
-        setState(() {});
+        setState(() {
+          _event = newEvent;
+        });
         return;
       }
     }
 
-    setState(() {});
+    setState(() {
+      _event = newEvent;
+    });
   }
 
   @override
@@ -156,18 +154,15 @@ class _GStreamBuilderState<T> extends State<GStreamBuilder<T>> {
 
   @override
   Widget build(BuildContext context) {
-    if (controller.isDefaultEvent) {
-      gLog('Displaying default event state');
-      return widget.builder(
-        context,
-        Event<T>.success(data: widget.initialState),
-        widget.child,
-      );
+    if (controller.isInDefaultState) {
+      final defaultState = widget.initialStateCallback();
+      _event = Event<T>.success(data: defaultState);
+      controller.set(defaultState, false);
     }
 
     return widget.builder(
       context,
-      _dataController!.currentEvent,
+      _event,
       widget.child,
     );
   }
