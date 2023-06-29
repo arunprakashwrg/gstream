@@ -4,10 +4,16 @@ version: 0.0.1
 # homepage: https://www.example.com
 
 environment:
-  sdk: '>=2.16.0 <3.0.0'
+  sdk: '>=3.0.2 <4.0.0'
 
 dependencies:
   equatable: ^2.0.5
   flutter:
     sdk: flutter
   uuid: ^3.0.6
+
+dev_dependencies:
+   wrg_flutter_lints:
+    git:
+      url: ssh://git@bitbucket.org/whiterabbitgroup/wrg_flutter_lints.git
+      ref: main
